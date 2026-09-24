@@ -48,7 +48,9 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 .stagewrap{flex:1;min-height:0;position:relative}
 #scroller{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #text{padding:60vh 22px 80vh;max-width:900px;margin:0 auto;font-size:var(--fs,38px);line-height:1.35;font-weight:700;text-align:left}
-#prompter.land #text{max-width:64%}
+#prompter.land #text{max-width:none}
+#flipSide{display:none}
+#prompter.land #flipSide{display:inline-block}
 .blur{position:absolute;left:0;right:0;pointer-events:none;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 #blurTop{top:0;-webkit-mask-image:linear-gradient(to bottom,#000 65%,transparent);mask-image:linear-gradient(to bottom,#000 65%,transparent)}
 #blurBot{bottom:0;-webkit-mask-image:linear-gradient(to top,#000 65%,transparent);mask-image:linear-gradient(to top,#000 65%,transparent)}
@@ -105,6 +107,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     <button id="bigger" aria-label="Bigger text">A+</button>
     <button id="mirrorBtn" aria-pressed="false">Mirror</button>
     <button id="restart">Restart</button>
+    <button id="flipSide" aria-label="Switch camera side">⇄ Side</button>
     <label>Margin <input id="margin" type="range" min="0" max="30" step="1"></label>
     <button id="listen" class="primary">Listen</button>
   </div>
@@ -124,7 +127,8 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   let mirror = store.get('vp-mirror') === '1';
   let cueFrac = 0.14, isLand = false, camSide = 'L';
   let mP = parseInt(store.get('vp-mp')); if (isNaN(mP)) mP = 4;
-  let mL = parseInt(store.get('vp-ml')); if (isNaN(mL)) mL = 3;
+  let mL = parseInt(store.get('vp-ml2')); if (isNaN(mL)) mL = 30;
+  let flip = store.get('vp-flip') === '1';
 
   function layout(){
     const pr = $('prompter');
@@ -132,11 +136,13 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     let ang = (typeof window.orientation === 'number') ? window.orientation
       : (screen.orientation ? (screen.orientation.angle === 270 ? -90 : screen.orientation.angle) : 0);
     pr.classList.toggle('land', land);
-    pr.classList.toggle('camL', land && ang === 90);
-    pr.classList.toggle('camR', land && ang === -90);
-    isLand = land; camSide = (land && ang === -90) ? 'R' : 'L';
+    let side = (ang === -90) ? 'R' : 'L';
+    if (flip) side = side === 'R' ? 'L' : 'R';
+    pr.classList.toggle('camL', land && side === 'L');
+    pr.classList.toggle('camR', land && side === 'R');
+    isLand = land; camSide = side;
     const sl = $('margin');
-    sl.max = land ? 40 : 30;
+    sl.max = land ? 60 : 30;
     sl.value = land ? mL : mP;
     applyMargins();
     cueFrac = land ? 0.5 : 0.14;
@@ -148,8 +154,8 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     const t = $('text');
     if (isLand){
       t.style.paddingLeft = t.style.paddingRight = '22px';
-      if (camSide === 'R'){ t.style.marginRight = mL + '%'; t.style.marginLeft = 'auto'; }
-      else { t.style.marginLeft = mL + '%'; t.style.marginRight = 'auto'; }
+      if (camSide === 'R'){ t.style.marginRight = '3%'; t.style.marginLeft = mL + '%'; }
+      else { t.style.marginLeft = '3%'; t.style.marginRight = mL + '%'; }
     } else {
       t.style.marginLeft = t.style.marginRight = 'auto';
       t.style.paddingLeft = t.style.paddingRight = 'calc(22px + ' + mP + '%)';
@@ -168,8 +174,8 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
       'rgba(0,0,0,.25) ' + Math.max(0, top - line) + 'px,' +
       'rgba(0,0,0,1) ' + top + 'px,' +
       'rgba(0,0,0,1) ' + bot + 'px,' +
-      'rgba(0,0,0,.35) ' + Math.min(h, bot + line*1.2) + 'px,' +
-      'rgba(0,0,0,.15) 100%)';
+      'rgba(0,0,0,.1) ' + Math.min(h, bot + line) + 'px,' +
+      'rgba(0,0,0,.05) 100%)';
     sc.style.webkitMaskImage = g;
     sc.style.maskImage = g;
     $('blurTop').style.height = top + 'px';
@@ -332,9 +338,10 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   $('listen').onclick = () => listening ? stopListening() : startListening();
   $('margin').addEventListener('input', e => {
     const v = +e.target.value;
-    if (isLand){ mL = v; store.set('vp-ml', v); } else { mP = v; store.set('vp-mp', v); }
+    if (isLand){ mL = v; store.set('vp-ml2', v); } else { mP = v; store.set('vp-mp', v); }
     applyMargins(); scrollToPos(true);
   });
+  $('flipSide').onclick = () => { flip = !flip; store.set('vp-flip', flip ? '1' : '0'); layout(); setTimeout(() => scrollToPos(true), 60); };
   $('restart').onclick = () => { pos = 0; paint(true); };
   $('smaller').onclick = () => { fs = Math.max(20, fs-4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
   $('bigger').onclick = () => { fs = Math.min(88, fs+4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
