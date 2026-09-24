@@ -51,6 +51,9 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 #prompter.land #text{max-width:none}
 #flipSide{display:none}
 #prompter.land #flipSide{display:inline-block}
+#prompter.land.topcam #flipSide{display:none}
+#camMode{display:none}
+#prompter.land #camMode{display:inline-block}
 .blur{position:absolute;left:0;right:0;pointer-events:none;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 #blurTop{top:0;-webkit-mask-image:linear-gradient(to bottom,#000 65%,transparent);mask-image:linear-gradient(to bottom,#000 65%,transparent)}
 #blurBot{bottom:0;-webkit-mask-image:linear-gradient(to top,#000 65%,transparent);mask-image:linear-gradient(to top,#000 65%,transparent)}
@@ -107,6 +110,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     <button id="bigger" aria-label="Bigger text">A+</button>
     <button id="mirrorBtn" aria-pressed="false">Mirror</button>
     <button id="restart">Restart</button>
+    <button id="camMode" aria-label="Switch camera position">Cam: Phone</button>
     <button id="flipSide" aria-label="Switch camera side">⇄ Side</button>
     <label>Margin <input id="margin" type="range" min="0" max="30" step="1"></label>
     <button id="listen" class="primary">Listen</button>
@@ -129,6 +133,8 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   let mP = parseInt(store.get('vp-mp')); if (isNaN(mP)) mP = 4;
   let mL = parseInt(store.get('vp-ml2')); if (isNaN(mL)) mL = 30;
   let flip = store.get('vp-flip') === '1';
+  let topCam = store.get('vp-top') === '1';
+  let mT = parseInt(store.get('vp-mt')); if (isNaN(mT)) mT = 10;
 
   function layout(){
     const pr = $('prompter');
@@ -138,21 +144,27 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     pr.classList.toggle('land', land);
     let side = (ang === -90) ? 'R' : 'L';
     if (flip) side = side === 'R' ? 'L' : 'R';
-    pr.classList.toggle('camL', land && side === 'L');
-    pr.classList.toggle('camR', land && side === 'R');
+    const sideMode = land && !topCam;
+    pr.classList.toggle('topcam', land && topCam);
+    pr.classList.toggle('camL', sideMode && side === 'L');
+    pr.classList.toggle('camR', sideMode && side === 'R');
+    $('camMode').textContent = topCam ? 'Cam: Top' : 'Cam: Phone';
     isLand = land; camSide = side;
     const sl = $('margin');
-    sl.max = land ? 60 : 30;
-    sl.value = land ? mL : mP;
+    sl.max = sideMode ? 60 : (land ? 40 : 30);
+    sl.value = sideMode ? mL : (land ? mT : mP);
     applyMargins();
-    cueFrac = land ? 0.5 : 0.14;
+    cueFrac = sideMode ? 0.5 : (land ? 0.16 : 0.14);
     pr.style.setProperty('--cuepos', (cueFrac*100) + '%');
     applyMask();
   }
 
   function applyMargins(){
     const t = $('text');
-    if (isLand){
+    if (isLand && topCam){
+      t.style.marginLeft = t.style.marginRight = 'auto';
+      t.style.paddingLeft = t.style.paddingRight = 'calc(22px + ' + mT + '%)';
+    } else if (isLand){
       t.style.paddingLeft = t.style.paddingRight = '22px';
       if (camSide === 'R'){ t.style.marginRight = '3%'; t.style.marginLeft = mL + '%'; }
       else { t.style.marginLeft = '3%'; t.style.marginRight = mL + '%'; }
@@ -338,10 +350,12 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   $('listen').onclick = () => listening ? stopListening() : startListening();
   $('margin').addEventListener('input', e => {
     const v = +e.target.value;
-    if (isLand){ mL = v; store.set('vp-ml2', v); } else { mP = v; store.set('vp-mp', v); }
+    if (isLand && topCam){ mT = v; store.set('vp-mt', v); }
+    else if (isLand){ mL = v; store.set('vp-ml2', v); } else { mP = v; store.set('vp-mp', v); }
     applyMargins(); scrollToPos(true);
   });
   $('flipSide').onclick = () => { flip = !flip; store.set('vp-flip', flip ? '1' : '0'); layout(); setTimeout(() => scrollToPos(true), 60); };
+  $('camMode').onclick = () => { topCam = !topCam; store.set('vp-top', topCam ? '1' : '0'); layout(); setTimeout(() => scrollToPos(true), 60); };
   $('restart').onclick = () => { pos = 0; paint(true); };
   $('smaller').onclick = () => { fs = Math.max(20, fs-4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
   $('bigger').onclick = () => { fs = Math.min(88, fs+4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
