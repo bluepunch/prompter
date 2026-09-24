@@ -47,7 +47,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 #prompter{color:var(--lit)}
 .stagewrap{flex:1;min-height:0;position:relative}
 #scroller{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
-#text{padding:32vh 22px 80vh;max-width:900px;margin:0 auto;font-size:var(--fs,38px);line-height:1.35;font-weight:700;text-align:center}
+#text{padding:60vh 22px 80vh;max-width:900px;margin:0 auto;font-size:var(--fs,38px);line-height:1.35;font-weight:700;text-align:left}
 #prompter.land #text{max-width:64%}
 #prompter.camL #text{margin-left:3%;margin-right:auto}
 #prompter.camR #text{margin-right:3%;margin-left:auto}
@@ -58,6 +58,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 .w.cur{color:var(--cue)}
 #cue{position:absolute;left:0;right:0;top:var(--cuepos,14%);border-top:2px solid rgba(232,163,23,.5);pointer-events:none}
 #cue::before{content:"";position:absolute;left:0;top:-9px;border:8px solid transparent;border-left:12px solid var(--cue)}
+#prompter.camR #cue::before{left:auto;right:0;border-left-color:transparent;border-right:12px solid var(--cue)}
 #status{position:absolute;top:10px;right:14px;font-size:14px;color:#8FA0B6;display:flex;align-items:center;gap:6px;pointer-events:none}
 #status i{width:8px;height:8px;border-radius:50%;background:#4E5D72}
 #status.on i{background:#4CC38A}
@@ -121,8 +122,27 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     pr.classList.toggle('land', land);
     pr.classList.toggle('camL', land && ang === 90);
     pr.classList.toggle('camR', land && ang === -90);
-    cueFrac = land ? 0.2 : 0.14;
+    cueFrac = land ? 0.5 : 0.14;
     pr.style.setProperty('--cuepos', (cueFrac*100) + '%');
+    applyMask();
+  }
+
+  function applyMask(){
+    const sc = $('scroller');
+    const h = sc.clientHeight; if (!h) return;
+    const line = fs * 1.35;
+    const cue = h * cueFrac;
+    const top = Math.max(0, cue - line*0.4);
+    const bot = cue + line*2.3;
+    const g = 'linear-gradient(to bottom,' +
+      'rgba(0,0,0,.08) 0px,' +
+      'rgba(0,0,0,.3) ' + Math.max(0, top - line*1.5) + 'px,' +
+      'rgba(0,0,0,1) ' + top + 'px,' +
+      'rgba(0,0,0,1) ' + bot + 'px,' +
+      'rgba(0,0,0,.45) ' + (bot + line*2.5) + 'px,' +
+      'rgba(0,0,0,.2) 100%)';
+    sc.style.webkitMaskImage = g;
+    sc.style.maskImage = g;
   }
 
   $('script').value = store.get('vp-script') || SAMPLE;
@@ -269,7 +289,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     store.set('vp-script', $('script').value);
     $('editor').hidden = true; $('prompter').hidden = false;
     document.documentElement.classList.add('stage');
-    layout(); build(); keepAwake();
+    build(); layout(); scrollToPos(true); keepAwake();
   };
   $('editBtn').onclick = () => {
     stopListening(); hideMsg();
@@ -279,8 +299,8 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   };
   $('listen').onclick = () => listening ? stopListening() : startListening();
   $('restart').onclick = () => { pos = 0; paint(true); };
-  $('smaller').onclick = () => { fs = Math.max(20, fs-4); store.set('vp-fs', fs); applyView(); scrollToPos(true); };
-  $('bigger').onclick = () => { fs = Math.min(88, fs+4); store.set('vp-fs', fs); applyView(); scrollToPos(true); };
+  $('smaller').onclick = () => { fs = Math.max(20, fs-4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
+  $('bigger').onclick = () => { fs = Math.min(88, fs+4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
   $('mirrorBtn').onclick = () => { mirror = !mirror; store.set('vp-mirror', mirror ? '1' : '0'); applyView(); };
   $('text').addEventListener('click', e => {
     const s = e.target.closest('.w');
