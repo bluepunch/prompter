@@ -49,8 +49,11 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 #scroller{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #text{padding:60vh 22px 80vh;max-width:900px;margin:0 auto;font-size:var(--fs,38px);line-height:1.35;font-weight:700;text-align:left}
 #prompter.land #text{max-width:64%}
-#prompter.camL #text{margin-left:3%;margin-right:auto}
-#prompter.camR #text{margin-right:3%;margin-left:auto}
+.blur{position:absolute;left:0;right:0;pointer-events:none;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#blurTop{top:0;-webkit-mask-image:linear-gradient(to bottom,#000 65%,transparent);mask-image:linear-gradient(to bottom,#000 65%,transparent)}
+#blurBot{bottom:0;-webkit-mask-image:linear-gradient(to top,#000 65%,transparent);mask-image:linear-gradient(to top,#000 65%,transparent)}
+.bar label{display:flex;align-items:center;gap:8px;font-size:14px;color:#8FA0B6}
+.bar input[type=range]{width:130px;accent-color:#E8A317}
 #text.mirror{transform:scaleX(-1)}
 #text p{margin:0 0 .6em}
 .w{transition:color .25s}
@@ -58,6 +61,9 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 .w.cur{color:var(--cue)}
 #cue{position:absolute;left:0;right:0;top:var(--cuepos,14%);border-top:2px solid rgba(232,163,23,.5);pointer-events:none}
 #cue::before{content:"";position:absolute;left:0;top:-9px;border:8px solid transparent;border-left:12px solid var(--cue)}
+#cue2{position:absolute;left:0;right:0;top:0;border-top:2px solid rgba(232,163,23,.5);pointer-events:none}
+#cue2::before{content:"";position:absolute;left:0;top:-9px;border:8px solid transparent;border-left:12px solid var(--cue)}
+#prompter.camR #cue2::before{left:auto;right:0;border-left-color:transparent;border-right:12px solid var(--cue)}
 #prompter.camR #cue::before{left:auto;right:0;border-left-color:transparent;border-right:12px solid var(--cue)}
 #status{position:absolute;top:10px;right:14px;font-size:14px;color:#8FA0B6;display:flex;align-items:center;gap:6px;pointer-events:none}
 #status i{width:8px;height:8px;border-radius:50%;background:#4E5D72}
@@ -86,7 +92,10 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 <section id="prompter" class="view" hidden>
   <div class="stagewrap">
     <div id="scroller"><div id="text"></div></div>
+    <div id="blurTop" class="blur" aria-hidden="true"></div>
+    <div id="blurBot" class="blur" aria-hidden="true"></div>
     <div id="cue" aria-hidden="true"></div>
+    <div id="cue2" aria-hidden="true"></div>
     <div id="status"><i></i><span>Paused</span></div>
     <div id="msg" role="status" hidden></div>
   </div>
@@ -96,6 +105,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     <button id="bigger" aria-label="Bigger text">A+</button>
     <button id="mirrorBtn" aria-pressed="false">Mirror</button>
     <button id="restart">Restart</button>
+    <label>Margin <input id="margin" type="range" min="0" max="30" step="1"></label>
     <button id="listen" class="primary">Listen</button>
   </div>
 </section>
@@ -112,7 +122,9 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   let words = [], mw = [], pos = 0, listening = false, rec = null, wake = null;
   let fs = Math.min(88, Math.max(20, parseInt(store.get('vp-fs')) || 38));
   let mirror = store.get('vp-mirror') === '1';
-  let cueFrac = 0.14;
+  let cueFrac = 0.14, isLand = false, camSide = 'L';
+  let mP = parseInt(store.get('vp-mp')); if (isNaN(mP)) mP = 4;
+  let mL = parseInt(store.get('vp-ml')); if (isNaN(mL)) mL = 3;
 
   function layout(){
     const pr = $('prompter');
@@ -122,9 +134,26 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     pr.classList.toggle('land', land);
     pr.classList.toggle('camL', land && ang === 90);
     pr.classList.toggle('camR', land && ang === -90);
+    isLand = land; camSide = (land && ang === -90) ? 'R' : 'L';
+    const sl = $('margin');
+    sl.max = land ? 40 : 30;
+    sl.value = land ? mL : mP;
+    applyMargins();
     cueFrac = land ? 0.5 : 0.14;
     pr.style.setProperty('--cuepos', (cueFrac*100) + '%');
     applyMask();
+  }
+
+  function applyMargins(){
+    const t = $('text');
+    if (isLand){
+      t.style.paddingLeft = t.style.paddingRight = '22px';
+      if (camSide === 'R'){ t.style.marginRight = mL + '%'; t.style.marginLeft = 'auto'; }
+      else { t.style.marginLeft = mL + '%'; t.style.marginRight = 'auto'; }
+    } else {
+      t.style.marginLeft = t.style.marginRight = 'auto';
+      t.style.paddingLeft = t.style.paddingRight = 'calc(22px + ' + mP + '%)';
+    }
   }
 
   function applyMask(){
@@ -132,17 +161,20 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     const h = sc.clientHeight; if (!h) return;
     const line = fs * 1.35;
     const cue = h * cueFrac;
-    const top = Math.max(0, cue - line*0.4);
-    const bot = cue + line*2.3;
+    const top = Math.max(0, cue - line*0.25);
+    const bot = Math.min(h, cue + 10 + line + 6);
     const g = 'linear-gradient(to bottom,' +
       'rgba(0,0,0,.08) 0px,' +
-      'rgba(0,0,0,.3) ' + Math.max(0, top - line*1.5) + 'px,' +
+      'rgba(0,0,0,.25) ' + Math.max(0, top - line) + 'px,' +
       'rgba(0,0,0,1) ' + top + 'px,' +
       'rgba(0,0,0,1) ' + bot + 'px,' +
-      'rgba(0,0,0,.45) ' + (bot + line*2.5) + 'px,' +
-      'rgba(0,0,0,.2) 100%)';
+      'rgba(0,0,0,.35) ' + Math.min(h, bot + line*1.2) + 'px,' +
+      'rgba(0,0,0,.15) 100%)';
     sc.style.webkitMaskImage = g;
     sc.style.maskImage = g;
+    $('blurTop').style.height = top + 'px';
+    $('blurBot').style.height = Math.max(0, h - bot) + 'px';
+    $('cue2').style.top = bot + 'px';
   }
 
   $('script').value = store.get('vp-script') || SAMPLE;
@@ -298,6 +330,11 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     try { wake && wake.release(); } catch(e){}
   };
   $('listen').onclick = () => listening ? stopListening() : startListening();
+  $('margin').addEventListener('input', e => {
+    const v = +e.target.value;
+    if (isLand){ mL = v; store.set('vp-ml', v); } else { mP = v; store.set('vp-mp', v); }
+    applyMargins(); scrollToPos(true);
+  });
   $('restart').onclick = () => { pos = 0; paint(true); };
   $('smaller').onclick = () => { fs = Math.max(20, fs-4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
   $('bigger').onclick = () => { fs = Math.min(88, fs+4); store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); };
