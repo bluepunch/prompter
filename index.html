@@ -76,6 +76,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 .w{transition:color .25s}
 .w.read{color:var(--dim)}
 .w.cur{color:var(--cue)}
+.w.ahead{color:#8FD8F0}
 #cue{position:absolute;left:0;right:0;top:var(--cuepos,14%);border-top:2px solid rgba(232,163,23,.5);pointer-events:none}
 #cue::before{content:"";position:absolute;left:0;top:-9px;border:8px solid transparent;border-left:12px solid var(--cue)}
 #cue2{position:absolute;left:0;right:0;top:0;border-top:2px solid rgba(232,163,23,.5);pointer-events:none}
@@ -132,6 +133,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   <div id="sheet" hidden>
     <div id="sample">Hey everyone, welcome back</div>
     <div class="srow"><span>Text size</span><input id="fsRange" type="range" min="20" max="88" step="2"><b id="fsVal"></b></div>
+    <div class="srow"><span>Look ahead</span><input id="aheadRange" type="range" min="0" max="8" step="1"><b id="aheadVal"></b></div>
     <div class="srow"><span id="mLabel">Margin</span><input id="margin" type="range" min="0" max="30" step="1"></div>
     <div class="sbtns">
       <button id="mirrorBtn" aria-pressed="false">Mirror</button>
@@ -159,6 +161,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   let mP = parseInt(store.get('vp-mp')); if (isNaN(mP)) mP = 4;
   let mL = parseInt(store.get('vp-ml2')); if (isNaN(mL)) mL = 30;
   let flip = store.get('vp-flip') === '1';
+  let ahead = parseInt(store.get('vp-ahead')); if (isNaN(ahead)) ahead = 4;
   let topCam = store.get('vp-top') === '1';
   let mT = parseInt(store.get('vp-mt')); if (isNaN(mT)) mT = 10;
 
@@ -334,6 +337,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
       const el = words[mw[i]].el;
       el.classList.toggle('read', i < pos);
       el.classList.toggle('cur', i === pos);
+      el.classList.toggle('ahead', i > pos && i <= pos + ahead);
     }
     scrollToPos(instant);
   }
@@ -441,6 +445,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     $('text').classList.toggle('mirror', mirror);
     $('mirrorBtn').setAttribute('aria-pressed', String(mirror));
     $('fsRange').value = fs; $('fsVal').textContent = fs;
+    $('aheadRange').value = ahead; $('aheadVal').textContent = ahead;
     $('sample').style.fontSize = fs + 'px';
   }
 
@@ -471,6 +476,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
   $('camMode').onclick = () => { topCam = !topCam; store.set('vp-top', topCam ? '1' : '0'); layout(); setTimeout(() => scrollToPos(true), 60); };
   $('restart').onclick = () => { pos = 0; paint(true); };
   $('fsRange').addEventListener('input', e => { fs = +e.target.value; store.set('vp-fs', fs); applyView(); applyMask(); scrollToPos(true); });
+  $('aheadRange').addEventListener('input', e => { ahead = +e.target.value; store.set('vp-ahead', ahead); $('aheadVal').textContent = ahead; paint(true); });
   $('gear').onclick = () => sheetOpen() ? closeSheet() : openSheet();
   $('doneBtn').onclick = closeSheet;
   $('mirrorBtn').onclick = () => { mirror = !mirror; store.set('vp-mirror', mirror ? '1' : '0'); applyView(); };
