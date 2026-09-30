@@ -349,21 +349,28 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     sc.scrollTo({top, behavior: instant ? 'auto' : 'smooth'});
   }
 
+  const STOP = new Set('the a an and or but so to of in on at for with from by is are was were be been it its this that these those i you he she we they me my your our their his her them us just like really very then than there here what when where who how not no yes do does did have has had will would can could should about into out up down over again also'.split(' '));
+  function isContent(w){ return w.length >= 4 && !STOP.has(w); }
+
   function match(sp){
     const K = sp.length;
-    const lo = Math.max(0, pos-1), hi = Math.min(mw.length-1, pos+30);
+    const lo = Math.max(0, pos-1), hi = Math.min(mw.length-1, pos+40);
     let best = -1, bestVal = -Infinity;
     for (let j=lo; j<=hi; j++){
       if (!similar(sp[K-1], words[mw[j]].n)) continue;
-      let raw = 1, cursor = j-1;
+      let raw = 1, content = isContent(sp[K-1]) ? 1 : 0, cursor = j-1;
       for (let si=K-2; si>=0 && cursor>=0; si--){
         for (let t=cursor; t>=Math.max(0,cursor-2); t--){
-          if (similar(sp[si], words[mw[t]].n)){ raw++; cursor = t-1; break; }
+          if (similar(sp[si], words[mw[t]].n)){ raw++; if (isContent(sp[si])) content++; cursor = t-1; break; }
         }
       }
-      const ok = raw >= 2 || (j <= pos+2);
+      const dist = j - pos;
+      let ok;
+      if (dist <= 3) ok = true;
+      else if (dist <= 12) ok = raw >= 2 && content >= 1;
+      else ok = raw >= 4 && content >= 2;
       if (!ok) continue;
-      const val = raw - (j-pos)*0.05;
+      const val = raw - Math.max(0, dist)*0.12;
       if (val > bestVal){ bestVal = val; best = j; }
     }
     if (best >= 0 && best+1 > pos){
