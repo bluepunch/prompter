@@ -52,7 +52,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
 #text{padding:60vh 22px 80vh;max-width:900px;margin:0 auto;font-size:var(--fs,38px);line-height:1.35;font-weight:700;text-align:left}
 #prompter.land #text{max-width:none}
 #flipSide{display:none}
-#prompter.land #flipSide{display:inline-block}
+#prompter.land #flipSide{display:none}
 #prompter.land.topcam #flipSide{display:none}
 #camMode{display:none}
 #prompter.land #camMode{display:inline-block}
@@ -210,8 +210,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
       t.style.paddingLeft = t.style.paddingRight = 'calc(22px + ' + mT + '%)';
     } else if (isLand){
       t.style.paddingLeft = t.style.paddingRight = '22px';
-      if (camSide === 'R'){ t.style.marginRight = '3%'; t.style.marginLeft = mL + '%'; }
-      else { t.style.marginLeft = '3%'; t.style.marginRight = mL + '%'; }
+      t.style.marginLeft = t.style.marginRight = (mL / 2) + '%';   // centered, Squeeze pulls both sides in
     } else {
       t.style.marginLeft = t.style.marginRight = 'auto';
       t.style.paddingLeft = t.style.paddingRight = 'calc(22px + ' + mP + '%)';
