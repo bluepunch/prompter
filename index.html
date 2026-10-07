@@ -198,7 +198,7 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--cue);outline
     $('mLabel').textContent = sideMode ? 'Squeeze' : 'Margin';
     sl.value = sideMode ? mL : (land ? mT : mP);
     applyMargins();
-    cueFrac = sideMode ? 0.5 : (land ? 0.16 : 0.14);
+    cueFrac = land ? 0.16 : 0.14;   // reading line sits near the top (closer to the camera) in every mode
     pr.style.setProperty('--cuepos', (cueFrac*100) + '%');
     applyMask();
   }
